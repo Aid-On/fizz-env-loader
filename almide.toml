@@ -1,0 +1,4 @@
+[package]
+name = "fizz_env_loader"
+version = "0.1.0"
+description = "Fizz .env loader — parse KEY=VALUE pairs from .env text (trim, # comments, quote stripping). One Almide core, native + wasm."

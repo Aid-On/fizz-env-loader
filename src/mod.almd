@@ -1,0 +1,50 @@
+// fizz_env_loader — .env テキストを KEY=VALUE ペアにパースする。
+//
+// 責務 (一行): .env の各行を解析し、(key, value) のリストを返す。
+//
+// 規則 (openaituber server/env.ts と同一):
+//   - 行を trim。空行と "#" 始まりはスキップ
+//   - 最初の "=" で key / value に分割。両側 trim
+//   - value が同種クォート ("..." / '...') で囲まれていれば外す
+//   - key が空ならスキップ
+// 実際の process.env への反映や上書き判定 (既存を上書きしない等) は Node 側。
+// テキスト→ペアのパースは純粋なのでここに集約=単一の正本。
+
+import list
+import string
+
+local fn strip_quotes(s: String) -> String = {
+  let n = string.len(s)
+  if n >= 2 and ((string.starts_with(s, "\"") and string.ends_with(s, "\""))
+              or (string.starts_with(s, "'") and string.ends_with(s, "'")))
+  then string.slice(s, 1, n - 1)
+  else s
+}
+
+// 1 行 → Option[(key, value)]。コメント/空行/不正行は none。
+fn parse_line(raw: String) -> Option[(String, String)] = {
+  let line = string.trim(string.replace(raw, "\r", ""))
+  if line == "" or string.starts_with(line, "#") then none
+  else match string.index_of(line, "=") {
+    none    => none,
+    some(i) => {
+      let key = string.trim(string.slice(line, 0, i))
+      let val = strip_quotes(string.trim(string.slice(line, i + 1)))
+      if key == "" then none else some((key, val))
+    },
+  }
+}
+
+// .env 全文 → (key, value) のリスト。
+fn parse(content: String) -> List[(String, String)] =
+  list.filter_map(string.split(content, "\n"), parse_line)
+
+local fn esc(s: String) -> String =
+  string.replace(string.replace(s, "\\", "\\\\"), "\"", "\\\"")
+
+// .env 全文 → JSON オブジェクト文字列 {"KEY":"VALUE",...}。
+fn to_json(content: String) -> String = {
+  let pairs = parse(content)
+  let items = list.map(pairs, (p) => "\"" + esc(p.0) + "\":\"" + esc(p.1) + "\"")
+  "{" + string.join(items, ",") + "}"
+}

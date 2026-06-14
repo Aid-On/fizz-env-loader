@@ -1,0 +1,35 @@
+// wasm — .env 全文を線形メモリに書き (env_alloc → JS が書く)、env_parse() が
+// JSON オブジェクト {"KEY":"VALUE",...} を出力バッファに書いて長さを返す →
+// env_out_ptr() で読み取り JSON.parse。
+import self as env
+import bytes
+import float
+import int
+import list
+import string
+
+var g_in: Bytes = bytes.new(0)
+var g_out: Bytes = bytes.new(0)
+
+@export(wasm, "env_alloc")
+fn env_alloc(len: Float) -> RawPtr = {
+  g_in = bytes.new(float.to_int(len))
+  bytes.as_mut_ptr(g_in)
+}
+
+@export(wasm, "env_parse")
+fn env_parse() -> Float = {
+  let s = env.to_json(bytes.to_string_lossy(g_in))
+  g_out = bytes.from_string(s)
+  int.to_float(list.len(string.to_bytes(s)))
+}
+
+@export(wasm, "env_out_ptr")
+fn env_out_ptr() -> RawPtr = bytes.as_mut_ptr(g_out)
+
+effect fn main() -> Unit = {
+  let _a = env_alloc(1.0)
+  let _r = env_parse()
+  let _p = env_out_ptr()
+  ()
+}

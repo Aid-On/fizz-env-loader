@@ -1,0 +1,19 @@
+// CLI (native) — stdin の .env 行を "key<TAB>value" に。コメント/空行はスキップ。
+import self as env
+import io
+import string
+
+effect fn main() -> Unit = {
+  var open = true
+  var blanks = 0
+  while open {
+    let raw = io.read_line()
+    match env.parse_line(raw) {
+      some(kv) => { println(kv.0 + "\t" + kv.1); blanks = 0 },
+      none => {
+        // 連続空行 2 回で EOF とみなす (パイプ終端)。
+        if string.trim(raw) == "" then { blanks = blanks + 1; if blanks >= 2 then open = false else () } else { blanks = 0 }
+      },
+    }
+  }
+}

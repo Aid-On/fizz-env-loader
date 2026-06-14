@@ -1,0 +1,29 @@
+import self as env
+import list
+import string
+local fn kv(line: String, k: String, v: String) -> Bool =
+  match env.parse_line(line) { some(p) => p.0 == k and p.1 == v, none => false }
+
+test "basic KEY=VALUE with trim" {
+  assert(kv("FOO=bar", "FOO", "bar"))
+  assert(kv("  FOO = bar  ", "FOO", "bar"))
+  assert(kv("API_KEY=sk-123", "API_KEY", "sk-123"))
+}
+test "comments and blanks are skipped" {
+  match env.parse_line("# comment") { none => assert(true), some(_) => assert(false) }
+  match env.parse_line("   ") { none => assert(true), some(_) => assert(false) }
+}
+test "quote stripping" {
+  assert(kv("X=\"quoted\"", "X", "quoted"))
+  assert(kv("X='single'", "X", "single"))
+  assert(kv("X=\"with=eq\"", "X", "with=eq"))   // value 内の = は保持
+}
+test "value keeps inner = ; empty key skipped" {
+  assert(kv("URL=http://a?b=c", "URL", "http://a?b=c"))
+  match env.parse_line("=novalue") { none => assert(true), some(_) => assert(false) }
+}
+test "parse + to_json over multiline" {
+  let pairs = env.parse("A=1\n# c\n\nB=2")
+  assert(list.len(pairs) == 2)
+  assert(string.contains(env.to_json("A=1\nB=2"), "\"A\":\"1\""))
+}
