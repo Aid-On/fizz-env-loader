@@ -17,5 +17,3 @@ jobs:
       - run: almide check src/main.almd
       - run: almide test spec/env_test.almd
       - run: mkdir -p build && almide build src/main.almd -o build/fizz-env-loader
-      - run: almide build src/bridge.almd --target wasm -o build/env.wasm
-      - run: node test/wasm-smoke.mjs

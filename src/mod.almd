@@ -42,9 +42,20 @@ fn parse(content: String) -> List[(String, String)] =
 local fn esc(s: String) -> String =
   string.replace(string.replace(s, "\\", "\\\\"), "\"", "\\\"")
 
+// 1 行 → JSON フラグメント `"key":"value"` (skip/不正行は "")。連結で新規文字列を
+// 作るので、スライス由来の値を List[(String,String)] に溜めない (それを wasm で
+// rc_dec すると落ちる経路を避ける)。
+local fn line_to_json(raw: String) -> String =
+  match parse_line(raw) {
+    none     => "",
+    some(kv) => "\"" + esc(kv.0) + "\":\"" + esc(kv.1) + "\"",
+  }
+
 // .env 全文 → JSON オブジェクト文字列 {"KEY":"VALUE",...}。
 fn to_json(content: String) -> String = {
-  let pairs = parse(content)
-  let items = list.map(pairs, (p) => "\"" + esc(p.0) + "\":\"" + esc(p.1) + "\"")
-  "{" + string.join(items, ",") + "}"
+  let frags = list.filter(
+    list.map(string.split(content, "\n"), line_to_json),
+    (s) => s != "",
+  )
+  "{" + string.join(frags, ",") + "}"
 }
